@@ -1,86 +1,87 @@
 
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 import os
 
-st.set_page_config(page_title="Dashboard Digitalizzazione PA", layout="wide")
-st.title("📊 Dashboard - Digitalizzazione della Pubblica Amministrazione")
+st.set_page_config(page_title="📊 Dashboard Completa Digitalizzazione", layout="wide")
+st.title("📊 Dashboard Completa - Digitalizzazione PA e Confronto UE")
 
-st.markdown("""
-Questa dashboard interattiva raccoglie i principali risultati delle analisi sulla digitalizzazione della Pubblica Amministrazione italiana:
-- Adozione PNRR
-- Competenze Digitali
-- Accesso ai Servizi Pubblici
-- Confronto Europeo
-- Indicatori Regionali
-- Previsioni 2030
-""")
+@st.cache_data
+def carica_csv(percorso):
+    return pd.read_csv(percorso)
 
-# Sezione 1: Indicatori Principali
-st.header("📌 Indicatori chiave e confronti")
+# === Percorsi ===
+DATA_DIR = "data"
+GRAFICI_DIR = "grafici"
+REPORT_PDF = "report_digitalizzazione_con_previsioni.pdf"
 
-st.image("grafici/accesso_servizi_digitali.png", caption="Accesso ai Servizi Pubblici Digitali (Italia)", use_container_width=True)
-st.image("grafici/adozione_pnrr_regioni.png", caption="Adozione PNRR per Regione", use_container_width=True)
+# === Tabs ===
+tabs = st.tabs([
+    "🌍 Confronto Europeo",
+    "🇮🇹 Indicatori Italiani",
+    "🎯 Digital Compass 2030",
+    "📥 Download e Report"
+])
 
-# Sezione 2: Confronto Europeo
-st.header("🌍 Confronto Europeo")
+# 🌍 TAB 1: Confronto Europeo
+with tabs[0]:
+    st.header("Confronto Europeo su Indicatori Digitali")
+    df = carica_csv(os.path.join(DATA_DIR, "confronto_digitale_europa.csv"))
+    indicatore = st.selectbox("Scegli un indicatore:", df["Indicatore"].unique())
+    df_sel = df[df["Indicatore"] == indicatore]
 
-col1, col2 = st.columns(2)
-with col1:
-    st.image("grafici/confronto_barre_I_DSK2_AB.png", caption="Competenze Digitali (I_DSK2_AB)")
-with col2:
-    st.image("grafici/confronto_barre_I_IGOV12FM.png", caption="Uso Servizi Digitali (I_IGOV12FM)")
+    paesi = st.multiselect("Paesi:", sorted(df_sel["Paese"].unique()), default=["IT", "FR", "DE", "ES"])
+    anni = st.multiselect("Anni:", sorted(df_sel["Anno"].unique()), default=sorted(df_sel["Anno"].unique())[-3:])
 
-# Sezione 3: Indicatori Regionali
-st.header("🏛️ Digitalizzazione Regionale e Zonale")
-col3, col4 = st.columns(2)
-with col3:
-    st.image("grafici/indice_digitalizzazione_regioni.png", caption="Indice Digitalizzazione per Regione")
-with col4:
-    st.image("grafici/indice_digitalizzazione_zone.png", caption="Indice Digitalizzazione per Zona")
+    df_plot = df_sel[(df_sel["Paese"].isin(paesi)) & (df_sel["Anno"].isin(anni))]
+    fig = px.line(df_plot, x="Anno", y="Valore", color="Paese", title=f"Andamento {indicatore}")
+    st.plotly_chart(fig, use_container_width=True)
 
-st.image("grafici/distribuzione_classi_adozione.png", caption="Distribuzione Classi Adozione Digitale", use_container_width=True)
+    st.subheader("📊 Classifiche e Radar 2023")
+    st.image(os.path.join(GRAFICI_DIR, "classifica_I_IGOV12FM_2023.png"))
+    st.image(os.path.join(GRAFICI_DIR, "radar_pa_digitale_2023.png"))
 
-# Sezione 4: Previsioni
-st.header("📈 Previsione Target Competenze Digitali")
+# 🇮🇹 TAB 2: Indicatori Italiani
+with tabs[1]:
+    st.header("Indicatori per l'Italia")
+    st.image(os.path.join(GRAFICI_DIR, "adozione_pnrr_regioni.png"))
+    st.image(os.path.join(GRAFICI_DIR, "accesso_servizi_digitali.png"))
+    st.image(os.path.join(GRAFICI_DIR, "distribuzione_classi_adozione.png"))
+    st.image(os.path.join(GRAFICI_DIR, "indice_digitalizzazione_regioni.png"))
+    st.image(os.path.join(GRAFICI_DIR, "indice_digitalizzazione_zone.png"))
+    st.image(os.path.join(GRAFICI_DIR, "cluster_macroaree_istat_2024_clean.png"))
 
-st.image("grafici/target_competenze_digitali.png", caption="Competenze Digitali - Italia vs Target UE 2030", use_container_width=True)
-st.image("grafici/previsione_target_80.png", caption="Previsione Raggiungimento 80% Competenze Digitali", use_container_width=True)
+# 🎯 TAB 3: Digital Compass 2030
+with tabs[2]:
+    st.header("Target Digital Compass 2030")
+    st.subheader("📈 Italia: andamento rispetto agli obiettivi")
+    st.image(os.path.join(GRAFICI_DIR, "target_competenze_digitali.png"))
+    st.image(os.path.join(GRAFICI_DIR, "previsione_target_80.png"))
+    st.image(os.path.join(GRAFICI_DIR, "progresso_digital_compass.png"))
 
-# Conclusione
-st.markdown("""
----
-**Nota**: I grafici sono il risultato dell'elaborazione dati su fonti ISTAT, Eurostat e PA Digitale. Le previsioni sono basate su modelli lineari sviluppati con Python.
+    st.subheader("🌐 Europa: classifica Digital Compass")
+    st.image(os.path.join(GRAFICI_DIR, "classifica_digital_compass_ue.png"))
+    st.image(os.path.join(GRAFICI_DIR, "progresso_medio_digital_compass_ue.png"))
 
-© 2025 – Analisi realizzata nell'ambito di un progetto di tesi magistrale.
-""")
+# 📥 TAB 4: Download
+with tabs[3]:
+    st.header("Download file e report")
+    st.subheader("📁 Dataset principali")
+    file_list = [
+        "confronto_digitale_europa.csv",
+        "correlazione_digitale_pnrr.csv",
+        "indicatori_pa_digitali_2023.csv",
+        "progresso_digital_compass.csv",
+        "classifica_digital_compass_ue.csv"
+    ]
+    for file in file_list:
+        path = os.path.join(DATA_DIR, file)
+        if os.path.exists(path):
+            with open(path, "rb") as f:
+                st.download_button(f"⬇️ Scarica {file}", f, file_name=file)
 
-
-# --- Sezione Download ---
-st.header("📥 Scarica Report e Dati")
-
-report_path = "report_digitalizzazione_con_previsioni.pdf"
-if os.path.exists(report_path):
-    with open(report_path, "rb") as f:
-        st.download_button(
-            label="📄 Scarica Report PDF",
-            data=f,
-            file_name="report_digitalizzazione.pdf",
-            mime="application/pdf"
-        )
-
-# Carica file CSV principali se esistono
-csv_files = {
-    "📊 Correlazione Digitale": "data/correlazione_digitale_pnrr.csv",
-    "🏛️ Adozione PNRR per Regione": "data/adozione_pnrr_regioni.csv",
-}
-
-for label, path in csv_files.items():
-    if os.path.exists(path):
-        with open(path, "rb") as f:
-            st.download_button(
-                label=f"⬇️ Scarica {label}",
-                data=f,
-                file_name=os.path.basename(path),
-                mime="text/csv"
-            )
+    st.subheader("📄 Report PDF Finale")
+    if os.path.exists(REPORT_PDF):
+        with open(REPORT_PDF, "rb") as f:
+            st.download_button("⬇️ Scarica report finale", f, file_name="report_digitalizzazione_con_previsioni.pdf")
